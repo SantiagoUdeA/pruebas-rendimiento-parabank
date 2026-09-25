@@ -9,14 +9,14 @@ on:
         description: Simulation to run
         type: choice
         required: true
-        default: login
+        default: all
         options: [login, transfer, statement, loan, billpay, all]
       profile:
         description: Load profile
         type: choice
         required: true
-        default: normal
-        options: [normal, peak, stress]
+        default: smoke
+        options: [smoke, normal, peak, stress]
 
 permissions:
   contents: read
@@ -26,63 +26,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
-    if: github.event_name != 'workflow_dispatch'
+  performance:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-      - run: ./mvnw -B -ntp test-compile
-      - run: python3 -m py_compile scripts/reconcile-transactions.py
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: validation-${{ github.run_id }}
-          path: target
-          if-no-files-found: ignore
-          retention-days: 14
-
-  load:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: [self-hosted, parabank-perf]
     timeout-minutes: 90
-    environment: parabank-isolated
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Verify isolated target
+      - name: Start isolated ParaBank binary
+        run: scripts/parabank-up.sh
+      - name: Initialize demo database and performance data
+        run: |
+          scripts/reset-local-parabank-db.sh
+          scripts/prepare-parabank-local-data.py
+      - name: Compile Gatling simulations
+        run: ./mvnw -B -ntp test-compile
+      - name: Run selected Gatling simulations
         env:
-          BASE_URL: ${{ vars.BASE_URL }}
-          ALLOWED_HOSTS: ${{ vars.ALLOWED_HOSTS }}
-        run: python3 scripts/validate-target.py
-      - name: Configure test data
-        env:
-          USERS_CSV: ${{ secrets.USERS_CSV }}
-          TRANSFERS_CSV: ${{ secrets.TRANSFERS_CSV }}
-          STATEMENTS_CSV: ${{ secrets.STATEMENTS_CSV }}
-          LOANS_CSV: ${{ secrets.LOANS_CSV }}
-          PAYMENTS_CSV: ${{ secrets.PAYMENTS_CSV }}
-        run: scripts/install-test-data.sh
-      - name: Run selected Gatling simulation(s)
-        env:
-          BASE_URL: ${{ vars.BASE_URL }}
-          ALLOWED_HOSTS: ${{ vars.ALLOWED_HOSTS }}
-          PROFILE: ${{ inputs.profile }}
-          DURATION_SECONDS: '300'
+          BASE_URL: http://127.0.0.1:8080/parabank/services/bank
+          ALLOWED_HOSTS: 127.0.0.1
+          PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'smoke' }}
+          DURATION_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.profile != 'smoke' && '300' || '10' }}
           RAMP_SECONDS: '60'
+          USERS: '2'
+          RATE_PER_SECOND: '5'
           DATA_DIR: data
+          SCENARIO: ${{ github.event_name == 'workflow_dispatch' && inputs.scenario || 'all' }}
         shell: bash
         run: |
-          case "${{ inputs.scenario }}" in
+          case "$SCENARIO" in
             login) classes=(LoginSimulation) ;;
             transfer) classes=(TransferSimulation) ;;
             statement) classes=(StatementSimulation) ;;
@@ -92,11 +69,17 @@ jobs:
             *) echo "Unsupported scenario" >&2; exit 2 ;;
           esac
           for class in "${classes[@]}"; do
+            echo "Running ${class} with PROFILE=${PROFILE}"
+            scripts/reset-local-parabank-db.sh
+            scripts/prepare-parabank-local-data.py
             export ATTEMPTS_FILE="evidence/runs/attempts-${class}.csv"
             ./mvnw -B -ntp gatling:test "-Dgatling.simulationClass=com.parabank.perf.simulations.${class}"
           done
       - name: Evaluate transfer throughput window
-        if: always() && (inputs.scenario == 'transfer' || inputs.scenario == 'all')
+        if: always() && github.event_name == 'workflow_dispatch' && (inputs.scenario == 'transfer' || inputs.scenario == 'all') && inputs.profile != 'smoke'
+        env:
+          SCENARIO: ${{ github.event_name == 'workflow_dispatch' && inputs.scenario || 'all' }}
+          PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'smoke' }}
         run: |
           attempts="evidence/runs/attempts-TransferSimulation.csv"
           if [ -s "$attempts" ]; then
@@ -108,15 +91,22 @@ jobs:
       - name: Save run metadata
         if: always()
         env:
-          SCENARIO: ${{ inputs.scenario }}
-          PROFILE: ${{ inputs.profile }}
+          SCENARIO: ${{ github.event_name == 'workflow_dispatch' && inputs.scenario || 'all' }}
+          PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'smoke' }}
+          BASE_URL: http://127.0.0.1:8080/parabank/services/bank
         run: python3 scripts/write-run-metadata.py
+      - name: Capture ParaBank logs
+        if: always()
+        run: docker compose -f compose.yaml logs --no-color --tail=300 parabank > evidence/runs/parabank-container.log || true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: gatling-${{ inputs.scenario }}-${{ inputs.profile }}-${{ github.run_id }}
+          name: gatling-${{ github.event_name == 'workflow_dispatch' && inputs.scenario || 'all' }}-${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'smoke' }}-${{ github.run_id }}
           path: |
             target/gatling
             evidence/runs
           if-no-files-found: warn
           retention-days: 30
+      - name: Stop ParaBank
+        if: always()
+        run: docker compose -f compose.yaml down --volumes --remove-orphans

@@ -39,7 +39,7 @@ La instancia local publica OpenAPI 3.0.0 en `/parabank/services/bank/openapi.jso
 
 ## GitHub Actions
 
-Push y pull request compilan los scripts y revisan el verificador sin llamar a ParaBank. `workflow_dispatch` solo usa un runner propio con etiquetas `self-hosted, parabank-perf`, el entorno protegido `parabank-isolated`, una lista cerrada de simulaciones/perfiles y una comprobación de destino privado. Los reportes y metadatos se cargan aunque falle una corrida; no se cargan CSV privados. Mantenga campañas separadas y configure la protección/aprobación del entorno en GitHub.
+Push y pull request levantan la imagen oficial fijada por digest en el runner hospedado por GitHub, inicializan una base desechable, preparan datos ficticios y ejecutan los cinco smoke tests de Gatling. El flujo manual permite elegir un servicio o todos y el perfil `smoke`, `normal`, `peak` o `stress`; los perfiles de carga alta usan la misma instancia ParaBank local del runner y reinician su base antes de cada servicio. No requiere secretos ni un ejecutor propio. Gatling HTML, metadatos y logs del contenedor se guardan como artefactos incluso si una aserción falla. Los resultados de los runners hospedados son útiles para repetir pruebas, pero su capacidad compartida no sustituye una medición controlada para certificar límites de rendimiento.
 
 ## Conciliación
 
