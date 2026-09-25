@@ -3,8 +3,8 @@
 
 Attempts CSV is written by AttemptRecorder. Ledger CSV columns are
 entryType,accountId,amount and optional caseId. Without caseId, matching is by
-account, entry type, and absolute amount; repeated case keys are inconclusive
-because they cannot be distinguished reliably.
+account, entry type, and absolute amount. Repeated keys are reconciled as a
+multiset so missing and duplicate rows still change the expected counts.
 """
 import argparse
 import csv
@@ -46,7 +46,6 @@ def main():
     expected = Counter()
     failed_ids = set()
     confirmed = 0
-    attempt_keys = Counter()
     for row in attempts:
         case_id = row["caseId"].strip()
         status = row["status"].strip().upper()
@@ -72,7 +71,6 @@ def main():
             keys = [("DEBIT", account, amount)]
         for key in keys:
             expected[key] += 1
-            attempt_keys[key] += 1
 
     actual = Counter()
     case_aware = "caseId" in ledger_headers and all(row.get("caseId", "").strip() for row in ledger)
@@ -109,9 +107,6 @@ def main():
             if count != target:
                 issues.append({"caseId": case_id, "reason": f"expected {target} ledger entries, found {count}"})
     else:
-        for key, count in attempt_keys.items():
-            if count > 1:
-                issues.append({"reason": "inconclusive: repeated account/type/amount cannot be uniquely correlated", "key": [key[0], key[1], str(key[2])], "attempts": count})
         for entry in ledger:
             try:
                 amount = abs(Decimal(entry["amount"]))

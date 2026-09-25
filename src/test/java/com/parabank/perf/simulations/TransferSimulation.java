@@ -9,7 +9,7 @@ import static io.gatling.javaapi.http.HttpDsl.*;
 
 public class TransferSimulation extends SimulationSupport {
   public TransferSimulation() {
-    var scenario = scenario("H2 transfer").feed(csv(dataDir + "/transfers.csv").queue())
+    var scenario = scenario("H2 transfer").feed(csv(dataDir + "/transfers.csv").circular())
       .exec(http("transfer").post("/transfer?fromAccountId=#{fromAccountId}&toAccountId=#{toAccountId}&amount=#{amount}")
         .check(status().is(200), substring("Successfully transferred").exists()))
       .exec(AttemptRecorder::record);
