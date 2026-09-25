@@ -1,0 +1,2 @@
+caseId,accountId,amount,payeeName,street,city,state,zipCode,phone,payeeAccount
+payment-001,13566,1.00,Example Payee,1 Test Street,Test City,CA,90001,5550100,24680

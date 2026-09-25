@@ -1,0 +1,2 @@
+caseId,customerId,fromAccountId,toAccountId,amount
+transfer-001,1001,13566,13577,1.00

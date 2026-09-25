@@ -1,0 +1,2 @@
+caseId,customerId,amount,downPayment,fromAccountId
+loan-001,1001,100.00,25.00,13566

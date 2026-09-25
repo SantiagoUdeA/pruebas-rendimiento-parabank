@@ -1,5 +1,12 @@
 target/
+results/
+evidence/runs/
 *.log
 .env
+.env.*
+!.env.example
 *.local.csv
-results/
+src/test/resources/data/*.csv
+!src/test/resources/data/*.example.csv
+__pycache__/
+*.py[cod]
