@@ -1,0 +1,710 @@
+================================================================================
+GUION DEL VIDEO - LABORATORIO 2 DE PRUEBAS DE SOFTWARE
+Universidad de Antioquia
+================================================================================
+
+Duracion objetivo: 13 minutos. El rango que pide la actividad es de 10 a 15.
+
+COMO USAR ESTE DOCUMENTO
+------------------------
+El documento esta dividido en bloques. Los bloques van en orden, del bloque 1
+al bloque 13. Cada bloque tiene siempre las mismas cuatro secciones:
+
+  TIEMPO      Cuanto dura el bloque. Sirve para no perder el reloj.
+  EN PANTALLA Que se ve en la pantalla en ese momento.
+  QUE DECIR   El texto literal que hay que leer en voz alta. Se puede leer
+              tal cual, sin inventar nada. Las frases cortas son para respirar.
+  QUE HACER   Los pasos concretos de teclado, de clics y de comandos.
+
+Reglas para la grabacion:
+  - No se graba en vivo la campana de 40 minutos. Se graba una corrida corta y
+    se muestran los resultados de la campana real como archivo descargado.
+  - Si el video se pasa de tiempo, se acortan los bloques 3 y 4 (entorno y
+    datos). No se acortan los bloques 5 al 9 (los cinco escenarios) ni el
+    bloque 10 (la conciliacion).
+  - Si algo falla, esta el plan B al final del documento.
+
+
+================================================================================
+PARTE 0 - ANTES DE GRABAR (15 minutos antes, esto no se graba)
+================================================================================
+
+Lista de verificacion. Todo debe estar en verde antes de presionar grabar.
+
+  [ ] Docker responde. En una terminal: docker info
+  [ ] La imagen de ParaBank ya esta descargada:
+        docker compose -f compose.yaml pull
+  [ ] Las dependencias de Maven ya estan descargadas:
+        ./mvnw -B -ntp test-compile
+  [ ] Java es la version 21. En una terminal: java -version
+      Si no es 21, usar este JDK y compilar con release 17:
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        ./mvnw -B -ntp -Dmaven.compiler.release=17 test-compile
+  [ ] ParaBank esta arriba. En una terminal:
+        scripts/parabank-up.sh
+  [ ] La terminal se ve bien: fuente grande (14 o 16), fondo claro, 80
+      columnas, y sin historial viejo con contrasenas o correos.
+  [ ] Grabador configurado para capturar solo el monitor, sin notificaciones.
+  [ ] Nadie tiene correo, Slack, Teams ni WhatsApp abierto.
+  [ ] Los cinco nombres completos de los integrantes estan anotados en un papel
+      al lado del teclado, porque se dicen en el minuto 0:20 y no se improvisan.
+  [ ] El enlace de la corrida de la campana real de GitHub Actions esta
+      copiado en el portapapeles. Se usa en el bloque 11.
+  [ ] Pestanas abiertas: el repositorio en GitHub, la pestana Actions, el
+      archivo PLAN_TECNICO.md y el editor con el codigo.
+
+Prueba de que todo funciona, en una sola terminal. Si esto pasa, se puede
+grabar:
+
+  cd pruebas-rendimiento-parabank
+  scripts/parabank-up.sh
+  export PROFILE=smoke
+  export RAMP_SECONDS=10
+  export DURATION_SECONDS=10
+  export USERS=2
+  export RATE_PER_SECOND=5
+  export DATA_DIR=data
+  export BASE_URL=http://127.0.0.1:8080/parabank/services/bank
+  export ALLOWED_HOSTS=127.0.0.1
+  ./mvnw -B -ntp test-compile
+  scripts/run-scenario.sh TransferSimulation smoke
+
+
+================================================================================
+BLOQUE 1 - APERTURA E INTEGRANTES
+================================================================================
+
+TIEMPO
+  Del minuto 0:00 al 0:45.
+
+EN PANTALLA
+  La portada del repositorio en GitHub, con la lista de archivos.
+
+QUE DECIR
+  Buenos dias. Somos el grupo del laboratorio dos de pruebas de software de la
+  Universidad de Antioquia.
+
+  Los integrantes del grupo son:
+  Nombre y apellido uno.
+  Nombre y apellido dos.
+  Nombre y apellido tres.
+  Nombre y apellido cuatro.
+  Nombre y apellido cinco.
+
+  En este laboratorio Evaluamos una aplicacion bancaria llamada ParaBank. La
+  actividad pide comprobar cinco historias no funcionales usando Gatling. Y hay
+  una condicion importante: no basta con decir que la prueba paso. Hay que
+  mostrar la evidencia.
+
+QUE HACER
+  Con el cursor, senalar la lista de archivos del repositorio y decir el nombre
+  de cada carpeta mientras las apareces:
+
+    PLAN_TECNICO.md       el plan y los criterios de aceptacion
+    src/test/java         los cinco escenarios de Gatling
+    scripts/              los scripts de datos, ejecucion y conciliacion
+    evidence/             la evidencia de las corridas
+    entrega/              el documento Word y este guion
+
+
+================================================================================
+BLOQUE 2 - QUE SE PRUEBA Y QUE NO SE PRUEBA
+================================================================================
+
+TIEMPO
+  Del minuto 0:45 al 1:30.
+
+EN PANTALLA
+  El archivo PLAN_TECNICO.md, en la parte donde estan los criterios de
+  aceptacion de las cinco historias.
+
+QUE DECIR
+  La aplicacion que vamos a medir es ParaBank, un banco en linea. Probamos
+  cinco historias de usuario: iniciar sesion, transferir dinero entre cuentas
+  propias, consultar los movimientos de la cuenta, solicitar un prestamo y pagar
+  un recibo de servicios a un beneficiario.
+
+  Ahora, un punto importante. La pagina publica de ParaBank es un servicio de
+  un tercero. El enunciado no nos autoriza a generar carga contra un servidor
+  que no es nuestro. Por eso levantamos nuestra propia copia de ParaBank en
+  Docker, dentro de nuestra maquina, y le hacemos todo el dano a esa copia.
+
+QUE HACER
+  Abrir el archivo compose.yaml y senalar la linea donde se publica el puerto.
+  Decir en voz alta: "Puerto 8080, escuchando solo en nuestra maquina."
+
+
+================================================================================
+BLOQUE 3 - EL ENTORNO DE PRUEBAS
+================================================================================
+
+TIEMPO
+  Del minuto 1:30 al 2:30.
+
+EN PANTALLA
+  La terminal.
+
+QUE DECIR
+  Esta es nuestra instancia de ParaBank. El archivo compose.yaml levanta la
+  imagen oficial del proyecto y la publica en el puerto 8080, pero solo dentro de
+  nuestra maquina: nadie de Internet puede entrar.
+
+  Hay dos scripts. Uno levanta el servicio y espera a que responda. El otro
+  reinicia la base de datos de demostracion. Reiniciamos la base antes de cada
+  escenario para que una prueba no herede los datos de la prueba anterior.
+
+QUE HACER
+  Ejecutar, en vivo, y dejar que se vea la salida:
+
+    $ scripts/parabank-up.sh
+
+  Despues, para mostrar que el banco tiene datos y que esos datos se pueden
+  consultar por la API:
+
+    $ curl -s -H 'Accept: application/json' \
+        http://127.0.0.1:8080/parabank/services/bank/customers/12212/accounts \
+        | python3 -m json.tool | head -20
+
+  Senalar la salida y decir: "La base de demostracion trae un cliente y once
+  cuentas. Guarden ese numero, lo vamos a usar otra vez."
+
+
+================================================================================
+BLOQUE 4 - LOS DATOS DE PRUEBA
+================================================================================
+
+TIEMPO
+  Del minuto 2:30 al 3:20.
+
+EN PANTALLA
+  El archivo scripts/prepare-parabank-local-data.py y la salida del comando.
+
+QUE DECIR
+  Aqui se resuelve uno de los problemas mas importantes de la entrega, y lo
+  explicamos porque es la diferencia entre medir el sistema y medir un error
+  nuestro.
+
+  El generador de datos no inventa datos. Primero le pregunta a la API del
+  propio ParaBank que clientes y que cuentas existen de verdad. Se queda solo
+  con cuentas checking o savings. Y para el escenario de consulta de movimientos
+  exige que la cuenta ya tenga al menos un movimiento registrado.
+
+  Por que esto importa tanto? Porque en la primera version metiamos cuentas sin
+  movimientos. ParaBank les respondia con una lista vacia, nuestra comprobacion
+  pedia un movimiento, y por lo tanto contabamos como error algo que era nuestro
+  error, no del sistema. El resultado era un dieciocho por ciento de fallos
+  falsos. Con el generador nuevo, el resultado es cero errores.
+
+QUE HACER
+  Ejecutar y mostrar el resumen del generador:
+
+    $ python3 scripts/prepare-parabank-local-data.py
+
+  Senalar los numeros que imprime: 60000 transferencias, 24000 pagos de
+  servicios y 12000 prestamos. Decir: "Cada operacion lleva un identificador
+  unico, y mas adelante vamos a usar ese identificador para cuadrar el dinero."
+
+
+================================================================================
+BLOQUE 5 - EL PROBLEMA DEL ARCHIVO DE DATOS
+================================================================================
+
+TIEMPO
+  Del minuto 3:20 al 4:00.
+
+EN PANTALLA
+  El archivo LoanSimulation.java, en la linea donde se define el feeder.
+
+QUE DECIR
+  Antes de mostrar los escenarios, quiero explicar el defecto tecnico mas
+  importante que encontramos y que corrigimos.
+
+  Los datos de prueba se cargan en memoria desde archivos CSV. Esos archivos se
+  consumen uno a uno, en orden, como una lista. En nuestra primera version, los
+  escenarios de prestamo y de pago de servicios usaban una lista de solo dos
+ cientas filas y no tenian ningun mecanismo para volver a empezar.
+
+  Ahora mire el numero. Con ciento cincuenta o doscientos usuarios durante seis
+  minutos, el sistema pide del orden de cincuenta y cuatro mil a setenta y dos
+  mil operaciones. Una lista de doscientas filas se acaba en el segundo
+  doscientos. En ese momento la simulacion se cae y el reporte que queda es
+  falso: dice que el sistema fallo, cuando en realidad se acabaron los datos.
+
+  La correccion fue una sola palabra: en vez de una cola, una cola circular. Los
+  datos se repiten cuando se acaban. Asi la prueba mide si el sistema aguanta en
+  el tiempo, y no mide cuantos datos tenia el archivo.
+
+QUE HACER
+  Abrir el archivo y senalar la linea del feeder. Debe verse algo como:
+
+    .feeders("loanRequests").circular()
+
+  Decir: "Circular. Los datos se repiten. La prueba ya no se puede romper por
+  falta de datos."
+
+
+================================================================================
+BLOQUE 6 - ESCENARIO 1: INICIO DE SESION
+================================================================================
+
+TIEMPO
+  Del minuto 4:00 al 5:00.
+
+EN PANTALLA
+  El archivo LoginSimulation.java.
+
+QUE DECIR
+  Escenario numero uno: inicio de sesion.
+
+  El modelo es cerrado. Esto significa que tenemos un numero fijo de usuarios
+  simultaneos que repiten la misma operacion, en lugar de una cantidad fija de
+  operaciones por segundo. Cien usuarios. Primero suben durante un minuto y
+  despues se quedan en meseta trescientos segundos.
+
+  Los criterios de aceptacion son dos: que no haya ningun error, y que el tiempo
+  maximo de respuesta sea menor a dos segundos.
+
+QUE HACER
+  Senalar en el codigo el tiempo de espera entre operaciones y la comprobacion
+  del tiempo maximo. Explicar en una frase:
+
+    "Este tiempo de espera no es una pausa decorativa. Si tenemos doscientos
+     usuarios en un bucle y cada respuesta dura milisegundos, el sistema recibe
+     decenas de miles de peticiones por segundo. Estariamos midiendo un sistema
+     que ya se cayo, no un sistema que sostiene doscientos usuarios al mismo
+     tiempo."
+
+  Ejecutar en vivo la version corta (tarda unos 20 segundos):
+
+    $ scripts/run-scenario.sh LoginSimulation smoke
+
+  Abrir el reporte de Gatling y senalar el grafico de tiempos de respuesta y el
+  porcentaje de exito:
+
+    $ target/gatling/LoginSimulation/index.html
+
+  Decir los numeros que se vean en pantalla: cero errores y tiempos de respuesta
+  de milisegundos. En la corrida de verificacion de cinco minutos fueron 880
+  peticiones sin un solo error y un maximo de 22 milisegundos.
+
+
+================================================================================
+BLOQUE 7 - ESCENARIO 2: TRANSFERENCIAS
+================================================================================
+
+TIEMPO
+  Del minuto 5:00 al 6:30.
+
+EN PANTALLA
+  El archivo TransferSimulation.java.
+
+QUE DECIR
+  Escenario numero dos: transferencias entre cuentas propias. Este es el mas
+  exigente de toda la actividad.
+
+  El criterio no es solo que el sistema responda. El criterio es que el sistema
+  sostenga al menos ciento cincuenta transferencias por segundo, y que no se
+  pierda ni se duplique ni un peso.
+
+  Este escenario es de modelo abierto: es decir, pedimos llegadas a una tasa
+  fija. Pedimos ciento sesenta y cinco por segundo, no ciento cincuenta. Es a
+  proposito: si el sistema se queda clavado exactamente en ciento cincuenta, el
+  margen de error del protocolo se come el criterio. Con ciento sesenta y cinco
+  tenemos margen para afirmar que superamos el objetivo.
+
+QUE HACER
+  Senalar la linea de la tasa de inyeccion en el codigo y decir: "Modelo
+  abierto, ciento sesenta y cinco por segundo."
+
+  Mostrar el reporte de la corrida corta y luego, en otra terminal, el
+  verificador de caudal:
+
+    $ python3 scripts/evaluate-transfer-throughput.py \
+        target/gatling/TransferSimulation/js/stats.json \
+        --ramp-seconds 10 --duration-seconds 10 --target 150
+
+  Explicar como lee el verificador:
+
+    "Este programa no se queda con el promedio. Parte la ventana de medicion en
+     bloques de diez segundos y revisa bloque por bloque. Un promedio alto puede
+     esconder diez segundos de paralisis, asi que exigimos que cada bloque llegue
+     al objetivo."
+
+  Decir los numeros de la corrida de verificacion: 164,1 transferencias
+  confirmadas por segundo en promedio, y el bloque mas bajo hizo 163,4. La
+  latencia media fue de 6 milisegundos y no hubo errores.
+
+  Despues mostrar el archivo de conciliacion de esa misma corrida y decir:
+
+    "Aqui esta lo importante. La API respondio 4125 transferencias. El historial
+     del banco tiene 8250 movimientos. Cada transferencia deja un debito en la
+     cuenta de origen y un credito en la cuenta de destino. 4125 por dos es
+     8250. Cuadra exactamente, y no hay filas repetidas."
+
+
+================================================================================
+BLOQUE 8 - ESCENARIO 3: CONSULTA DE MOVIMIENTOS
+================================================================================
+
+TIEMPO
+  Del minuto 6:30 al 7:15.
+
+EN PANTALLA
+  El archivo StatementSimulation.java.
+
+QUE DECIR
+  Escenario numero tres: consulta de movimientos de la cuenta. Doscientos
+  usuarios simultaneos. Criterios: tiempo maximo menor a tres segundos y menos
+  del uno por ciento de errores.
+
+  Este escenario es el ejemplo mas claro de por que los datos de prueba importan.
+  Ya lo contando en el bloque cuatro: con el generador viejo, este escenario
+  reportaba dieciocho por ciento de errores que no eran del sistema, porque
+  consultabamos cuentas que no tenian movimientos. Con el generador nuevo, que
+  solo usa cuentas con al menos un movimiento real, el resultado es cero errores
+  con doscientos usuarios, y un tiempo maximo de 29 milisegundos.
+
+QUE HACER
+  Senalar las dos comprobaciones del final del archivo: el maximo de tres
+  segundos y el uno por ciento de errores.
+
+  Si hay tiempo, mostrar el reporte con el cien por ciento de exito. Si no hay
+  tiempo, decir el resultado de memoria: "1757 peticiones, cero errores, maximo
+  29 milisegundos."
+
+
+================================================================================
+BLOQUE 9 - ESCENARIO 4: SOLICITUD DE PRESTAMO
+================================================================================
+
+TIEMPO
+  Del minuto 7:15 al 8:30.
+
+EN PANTALLA
+  El archivo LoanSimulation.java y, despues, el grafico de fallas de la corrida.
+
+QUE DECIR
+  Escenario numero cuatro: solicitud de prestamo. Ciento cincuenta usuarios.
+  Criterios: tiempo medio de respuesta menor a cinco segundos, y al menos el
+  noventa y ocho por ciento de solicitudes exitosas.
+
+  Este es el escenario donde encontramos un defecto real, y lo vamos a reportar
+  tal como lo medimos.
+
+  La primera version daba 94,39 por ciento de exito. La causa no son nuestros
+  datos. Los 46 rechazos son errores 400 devueltos por el propio ParaBank, con un
+  mensaje que dice que no encuentra la cuenta, y se refieren a cuentas que si
+  existen.
+
+  Investigamos el origen. Reproducimos el mismo error con veinte llamadas
+  simultaneas hechas por fuera de Gatling, y el error desaparece cuando bajamos
+  el ritmo de las peticiones. Eso demuestra que no es un problema de los datos ni
+  del escenario, sino una condicion de carrera interna del ParaBank contra su base
+  de datos.
+
+QUE HACER
+  Mostrar la tabla de sensibilidad que esta en el archivo
+  evidence/local-campaign-summary.md:
+
+    Pausa de 5 segundos   ->  27 peticiones por segundo  ->  exito 94,39 %
+    Pausa de 15 segundos  ->  10 peticiones por segundo  ->  exito 99,67 %
+
+  Decir, senalando cada fila:
+
+    "Con la espera de cinco segundos, que es el valor por defecto del escenario, el
+     criterio de latencia se cumple con sobra, pero el criterio de exito no se
+     cumple, y por lo tanto el escenario no pasa."
+
+    "Con quince segundos de espera, el criterio de exito si se cumple. Pero bajar
+     el ritmo de 27 a 10 peticiones por segundo ya no es la carga que pedia el
+     enunciado."
+
+    "Aqui Podriamos haber subido la espera para que la tabla saliera toda en
+     verde. No lo hicimos. Medimos las dos configuraciones y documentamos el
+     comportamiento real del sistema. Este tipo de hallazgo es exactamente lo que
+     un banco necesita conocer antes de poner este sistema en produccion."
+
+  Senalar en el reporte que el tiempo medio de respuesta fue de 55 milisegundos,
+  muy por debajo del limite de cinco segundos. Decir: "Lo que falla no es la
+  velocidad. Lo que falla es la disponibilidad bajo concurrencia."
+
+
+================================================================================
+BLOQUE 10 - ESCENARIO 5: PAGO DE SERVICIOS
+================================================================================
+
+TIEMPO
+  Del minuto 8:30 al 9:30.
+
+EN PANTALLA
+  El archivo BillPaySimulation.java.
+
+QUE DECIR
+  Escenario numero cinco: pago de servicios a un beneficiario. Doscientos
+  usuarios. Criterios: tiempo maximo menor a tres segundos, menos del uno por
+  ciento de errores, y un criterio adicional que nos inventamos nosotros: que
+  cada pago quede registrado una sola vez en el historial del banco.
+
+  Aqui hay algo que vamos a explicar como decision de diseno. Cuando una
+  peticion falla en un sistema real, lo usual es reintentar. Pero ParaBank no
+  tiene clave de idempotencia, es decir, no tiene forma de saber que ya hizo ese
+  pago. Si reintentamos a ciegas, el sistema puede cobrar dos veces al
+  beneficiario.
+
+  Entonces nuestra herramienta nunca reintenta pagos ni transferencias. La garantia
+  de que no se cobro dos veces no la da un reintento: la da la conciliacion contra
+  el historial, que es lo que vamos a ver ahora.
+
+QUE HACER
+  Senalar el feeder circular de este archivo, para mostrar que aqui tambien se
+  aplico la correccion del bloque cinco.
+
+  Mostrar el resultado: 1753 pagos, cero errores, tiempo maximo de 122
+  milisegundos. Y mostrar la conciliacion: 1753 debitos en el historial, uno por
+  pago, ninguno repetido.
+
+  Decir: "El numero de pagos que dijo la API es exactamente el numero de
+  movimientos que dejo el banco. Ni uno mas, ni uno menos."
+
+
+================================================================================
+BLOQUE 11 - LA CONCILIACION DE EXTREMO A EXTREMO
+================================================================================
+
+TIEMPO
+  Del minuto 9:30 al 10:30.
+
+EN PANTALLA
+  La salida del comando scripts/run-scenario.sh, con los pasos que imprime.
+
+QUE DECIR
+  Este es el trabajo del que mas estamos orgullosos, porque sin esto los
+  criterios de dinero serian afirmaciones sin prueba.
+
+  El procedimiento tiene tres pasos. Primero, antes de la simulacion, el script
+  toma una foto del historial de movimientos de todas las cuentas. Segundo, se
+  ejecuta la carga. Tercero, se vuelve a leer el historial, se calcula la
+  diferencia, y esa diferencia se cuadra contra la lista de operaciones que
+  Gatling registro: mismo identificador, mismo importe, mismas cuentas, y
+  ninguna fila repetida.
+
+  Esto es posible porque ParaBank le asigna un identificador unico a cada
+  movimiento del historial. Gracias a eso el cuadre detecta duplicados reales, y
+  no solamente diferencias en la cantidad de filas.
+
+  Para transferencias exigimos un debito en la cuenta de origen y un credito en la
+  cuenta de destino. Para pagos, un debito en la cuenta que paga. Si algo no
+  cuadra, el proceso termina con codigo de error y la ejecucion queda en rojo.
+
+QUE HACER
+  Mostrar la salida del script, que se ve asi:
+
+    == Snapshotting ParaBank ledger before the run
+    == Running com.parabank.perf.simulations.TransferSimulation
+    == Reconciling transfer operations against the ParaBank ledger
+      "verdict": "PASS"
+    == TransferSimulation finished with status 0
+
+  Senalar la palabra PASS y el codigo de salida cero. Decir: "Ese cero es el
+  veredicto. Si no fuera cero, el job de GitHub Actions quedaria en rojo."
+
+
+================================================================================
+BLOQUE 12 - GITHUB ACTIONS
+================================================================================
+
+TIEMPO
+  Del minuto 10:30 al 11:45.
+
+EN PANTALLA
+  La pestana Actions del repositorio en GitHub. Primero la pantalla de
+  ejecucion manual, despues la corrida de la campana real.
+
+QUE DECIR
+  Todo lo que acabamos de ver se ejecuta solo en GitHub Actions. No hay
+  secretos, no hay clave de API, y no hace falta ningun servidor propio.
+
+  Cada vez que alguien sube un cambio, Actions levanta ParaBank en su maquina
+  virtual, prepara los datos y ejecuta los cinco escenarios. Eso es lo que se ve
+  en verde en el historial.
+
+  Para la campana de aceptacion, el flujo es manual. Entramos a la pestana
+  Actions, abrimos el flujo que se llama ParaBank performance, y pulsamos el
+  boton Run workflow. Ahi se eligen tres cosas: que escenario correr, que perfil
+  de carga usar, y un nombre para identificar la corrida.
+
+  Para la campana de cinco minutos elegimos escenario all y perfil normal. Eso
+  levanta los cinco servicios, cada uno con un minuto de rampa y cinco minutos de
+  meseta. La corrida completa se demora alrededor de cuarenta minutos.
+
+QUE HACER
+  En la pantalla de Run workflow, senalar los tres campos de entrada y decir los
+  valores: "Escenario: all. Perfil: normal."
+
+  Abrir la corrida de la campana real y mostrar la lista de pasos del job:
+
+    Levantar ParaBank
+    Validar que el sistema bajo prueba es nuestra instancia
+    Preparar los datos
+    Ejecutar el escenario
+    Calcular el resumen de criterios
+    Validar criterios y conciliaciones
+    Capturar logs y parar el servicio
+
+  Senalar el paso de validar criterios y decir:
+
+    "Este paso es el que hace que la automatizacion sirva de algo. Si un criterio
+     de aceptacion falla, o si la conciliacion no cuadra, el job termina en rojo,
+     aunque Gatling haya ejecutado bien. El codigo de salida del job es el
+     veredicto de la prueba."
+
+  Bajar a la seccion Artifacts y descargar el reporte HTML de Gatling. Abrirlo
+  en otra pestana y mostrar el grafico de la campana real.
+
+  Decir: "Aqui guardamos el reporte de cada corrida, los datos del resumen, la
+  salida de la conciliacion y los logs del servidor. Todo queda como evidencia.
+  El enlace de esta corrida es el que va en la entrega."
+
+
+================================================================================
+BLOQUE 13 - LA TABLA DE CUMPLIMIENTO Y EL CIERRE
+================================================================================
+
+TIEMPO
+  Del minuto 11:45 al 13:00.
+
+EN PANTALLA
+  El archivo evidence/runs/summary.md, que se genera automaticamente.
+
+QUE DECIR
+  Esta tabla no se escribe a mano. Se genera con un script que lee la salida
+  real de cada ejecucion y arma una fila por criterio, con cuatro columnas: la
+  historia, el criterio, el valor medido y si se cumple o no.
+
+  Al pie de la tabla el script cuenta cuantos criterios se incumplieron. En
+  nuestras corridas de verificacion los incumplimientos estan todos en el mismo
+  lugar: el criterio de exito del prestamo, que es el hallazgo que ya
+  explicamos. Cuando termine la campana de cinco minutos, esta misma tabla va a
+  ser la evidencia final de la entrega.
+
+QUE HACER
+  Senalar la columna de veredictos y el contador de incumplimientos del pie de la
+  tabla. No alargar: la tabla ya se leyo en el bloque 9.
+
+  Volver a la portada del repositorio y cerrar:
+
+    "Para cerrar. Los cinco escenarios quedaron verificados de extremo a extremo.
+     Los datos de prueba salen de la propia API del sistema. Los archivos de
+     datos ya no se agotan en las pruebas de carga. Los criterios de dinero se
+     comprueban contra el historial del banco. Y donde encontramos un defecto, lo
+     reportamos con la evidencia de como se reproduce, en lugar de mover los
+     parametros hasta que la tabla saliera en verde.
+
+     Decimos tambien las limitaciones. La maquina de GitHub Actions es
+     compartida, asi que nuestras cifras sirven para repetir las pruebas y
+     comparar, pero no para certificar los limites de rendimiento con control
+     total del hardware. Y el reporte de la campana de cinco minutos es el que
+     formaliza la evidencia final.
+
+     Muchas gracias por su atencion."
+
+
+================================================================================
+APENDICE A - RESUMEN DE LOS CINCO ESCENARIOS
+================================================================================
+
+Para no perderse durante la grabacion, esta es la lista de lo que se muestra en
+cada bloque.
+
+  Bloque 6 - Inicio de sesion
+    Modelo: cerrado. Usuarios: 100. Duracion: 60 s de rampa + 300 s.
+    Criterios: tiempo maximo menor a 2000 ms, cero errores.
+    Se muestra: el reporte de Gatling con el maximo y el porcentaje de exito.
+    Resultado de la corrida de verificacion: 880 peticiones, 0 errores, maximo
+    22 ms. CUMPLE.
+
+  Bloque 7 - Transferencias
+    Modelo: abierto. Tasa: 165 por segundo. Duracion: 60 s de rampa + 300 s.
+    Criterios: 150 transferencias por segundo en cada bloque de 10 s, cero
+    errores, y cuadre completo contra el historial.
+    Se muestra: el reporte, el verificador de caudal y el JSON de conciliacion.
+    Resultado: 164,1 por segundo en promedio, bloque mas bajo 163,4. 4125
+    transferencias confirmadas contra 8250 movimientos. CUMPLE.
+
+  Bloque 8 - Consulta de movimientos
+    Modelo: cerrado. Usuarios: 200. Duracion: 60 s de rampa + 300 s.
+    Criterios: tiempo maximo menor a 3000 ms, menos del 1 % de errores.
+    Se muestra: las dos comprobaciones del final del archivo y el reporte.
+    Resultado: 1757 peticiones, 0 errores, maximo 29 ms. CUMPLE.
+
+  Bloque 9 - Solicitud de prestamo
+    Modelo: cerrado. Usuarios: 150. Duracion: 60 s de rampa + 300 s.
+    Criterios: tiempo medio menor a 5000 ms, exito mayor o igual al 98 %.
+    Se muestra: el grafico de fallas y la tabla de sensibilidad.
+    Resultado: media 55 ms, exito 94,39 %. CUMPLE el de latencia, NO CUMPLE el
+    de exito. Este es el hallazgo abierto.
+
+  Bloque 10 - Pago de servicios
+    Modelo: cerrado. Usuarios: 200. Duracion: 60 s de rampa + 300 s.
+    Criterios: tiempo maximo menor a 3000 ms, menos del 1 % de errores, y cada
+    pago registrado una sola vez.
+    Se muestra: el reporte y el cuadre sin duplicados.
+    Resultado: 1753 pagos, 0 errores, maximo 122 ms, sin duplicados. CUMPLE.
+
+Los cinco criterios de latencia y de caudal se cumplen. De los criterios de
+disponibilidad, cuatro se cumplen y el del prestamo no se cumple, por un defecto
+del sistema bajo prueba.
+
+
+================================================================================
+APENDICE B - PLAN B SI ALGO FALLA DURANTE LA GRABACION
+================================================================================
+
+ParaBank no arranca
+  El puerto 8080 puede estar ocupado por una corrida anterior. Solucion:
+      docker compose -f compose.yaml down --volumes
+      scripts/parabank-up.sh
+
+Gatling no compila
+  Casi siempre es que Maven esta descargando dependencias por primera vez. Se
+  evita con el paso 0, donde se compila antes de grabar. Si igual falla, mostrar
+  el mensaje de error tal cual, decir en una frase que la compilacion de
+  Maven no termino a tiempo, y seguir con el siguiente bloque. No se pierde
+  tiempo grabando mientras compila.
+
+No aparece el reporte HTML
+  La ruta es target/gatling/NombreDelEscenario/index.html. Se abre con doble
+  clic en el navegador, no necesita servidor.
+
+La pantalla se congela
+  No se graba en vivo la campana normal. La demo en vivo es con el perfil
+  smoke, que dura poco, y la campana de cinco minutos se muestra como evidencia
+  ya generada.
+
+Se acaba el tiempo
+  Se acortan los bloques 3 y 4. Se pueden reducir a media hora de minuto cada
+  uno. No se tocan los bloques 6 a 11.
+
+Falta la persona que tenia un bloque
+  Los quince minutos de presentacion se reparten entre los cinco. Lo mas facil
+  es que cada uno lea su bloque de la tabla del apendice A: los minutos 4 a 9
+  son de una persona cada uno, y los bloques 1, 2, 12 y 13 se reparten.
+
+
+================================================================================
+APENDICE C - DESPUES DE GRABAR
+================================================================================
+
+  [ ] Escuchar el audio completo mirando la pantalla, para detectar numeros
+      mal leidos.
+  [ ] Verificar que la duracion quedo entre 10 y 15 minutos.
+  [ ] Verificar que se vean bien las cifras: en el reporte de Gatling la fuente
+      debe ser legible sin ampliar.
+  [ ] Subir el video a Drive con permiso de lectura para cualquiera con el
+      enlace.
+  [ ] Pegar el enlace, la duracion y los cinco nombres completos en el archivo
+      entrega/Resumen_actividad_Parabank.docx.
+  [ ] Subir el documento Word a la plataforma de la asignatura.
+  [ ] El video no se sube al repositorio. Al repositorio solo va el enlace.
+  [ ] Copiar el enlace de la corrida de la campana de GitHub Actions en la
+      seccion de evidencia del documento.
