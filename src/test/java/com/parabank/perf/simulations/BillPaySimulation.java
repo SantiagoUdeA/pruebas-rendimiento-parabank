@@ -8,10 +8,11 @@ import static io.gatling.javaapi.http.HttpDsl.*;
 
 public class BillPaySimulation extends SimulationSupport {
   public BillPaySimulation() {
-    var scenario = scenario("H5 bill pay").feed(csv(dataDir + "/payments.csv").queue())
+    var scenario = scenario("H5 bill pay").feed(csv(dataDir + "/payments.csv").circular())
       .exec(http("bill pay").post("/billpay?accountId=#{accountId}&amount=#{amount}")
         .body(StringBody("{\"name\":\"#{payeeName}\",\"address\":{\"street\":\"#{street}\",\"city\":\"#{city}\",\"state\":\"#{state}\",\"zipCode\":\"#{zipCode}\"},\"phoneNumber\":\"#{phone}\",\"accountNumber\":\"#{payeeAccount}\"}"))
         .check(status().is(200), jsonPath("$.payeeName").exists()))
+      .pause(Environment.PAUSE)
       .exec(AttemptRecorder::record);
     int count = Environment.PROFILE.equals("smoke") ? users : 200;
     var setup = Environment.PROFILE.equals("smoke")
