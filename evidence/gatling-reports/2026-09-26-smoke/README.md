@@ -14,6 +14,9 @@ simulación. Gatling 3.14.9, Java 21.
 
 ## Cómo ver los informes
 
+Versiones en PDF listas para compartir en `pdf/` (`login.pdf`, `transfer.pdf`,
+`statement.pdf`, `loan.pdf`, `billpay.pdf`).
+
 GitHub muestra el HTML como código. Para ver el informe interactivo de Gatling,
 clona el repo y abre en el navegador el `index.html` de cada carpeta
 (`login/`, `transfer/`, `statement/`, `loan/`, `billpay/`).
