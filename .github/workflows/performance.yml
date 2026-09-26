@@ -82,12 +82,16 @@ jobs:
       - name: Build acceptance summary
         if: always()
         run: python3 scripts/build-summary.py evidence/runs || true
+      - name: Record the system under test version
+        id: sut
+        run: echo "version=$(docker compose -f compose.yaml config --images | head -1)" >> "$GITHUB_OUTPUT"
       - name: Save run metadata
         if: always()
         env:
           SCENARIO: ${{ github.event_name == 'workflow_dispatch' && inputs.scenario || 'all' }}
           PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'smoke' }}
           BASE_URL: http://127.0.0.1:8080/parabank/services/bank
+          SUT_VERSION: ${{ steps.sut.outputs.version }}
         run: python3 scripts/write-run-metadata.py
       - name: Capture ParaBank logs
         if: always()
