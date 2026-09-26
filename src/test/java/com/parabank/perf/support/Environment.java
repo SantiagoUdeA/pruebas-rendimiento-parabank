@@ -19,7 +19,7 @@ public final class Environment {
   public static final int USERS = positiveInt("USERS", PROFILE.equals("smoke") ? 2 : 100);
   public static final int RATE = positiveInt("RATE_PER_SECOND", 165);
   public static final int PAUSE = nonNegativeInt("PAUSE_SECONDS", PROFILE.equals("smoke") ? 0 : 3);
-  public static final int LOAN_PAUSE = nonNegativeInt("LOAN_PAUSE_SECONDS", PROFILE.equals("smoke") ? 0 : 5);
+  public static final int LOAN_PAUSE = nonNegativeInt("LOAN_PAUSE_SECONDS", PROFILE.equals("smoke") ? 0 : 15);
   public static final String DATA_DIR = System.getenv().getOrDefault("DATA_DIR", "data");
 
   static {

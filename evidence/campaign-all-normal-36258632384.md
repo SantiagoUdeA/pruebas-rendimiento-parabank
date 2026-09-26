@@ -101,3 +101,23 @@ en la máquina local.
 - Si el docente requiere que las cinco historias pasen, la palanca no es el dato de prueba sino el
   ritmo: H4 pasa a ~10 req/s. Eso se documenta como el límite de ParaBank bajo este modelo de
   ejecución, no como un ajuste para maquillar la tabla.
+
+## Cambio posterior del perfil de H4
+
+Esta corrida se ejecutó con `LOAN_PAUSE_SECONDS=5`. El docente pidió subir la espera a 15 s, y el
+valor por defecto del escenario pasó a 15 s en el commit `6c1d0b8`. Los datos de esta corrida se
+dejan sin modificar: son la medición con la que se detectó el defecto y no deben reescribirse.
+
+Lo que cambia con 15 s de espera, dicho de forma explícita para que el documento de entrega no
+amague:
+
+| Escenario | Pausa | Ritmo efectivo | Éxito de H4 |
+|---|---:|---:|---:|
+| H4 en esta campaña (corrida 36258632384) | 5 s | ~27 req/s | 88,37 % → NO CUMPLE |
+| H4 en la máquina local | 15 s | ~10 req/s | 99,67 % → CUMPLE |
+| H4 con el valor por defecto nuevo | 15 s | ~10 req/s | pendiente de la corrida de confirmación |
+
+Con 150 usuarios y 15 s de espera, cada usuario sostiene una operación cada 15 segundos, así que el
+escenario genera unas 10 peticiones por segundo en lugar de 27. Sigue siendo un modelo cerrado de
+150 usuarios simultáneos, que es lo que pide el enunciado, pero la presión sobre ParaBank es
+menor. El criterio de latencia se cumple con holgura en las dos configuraciones.
