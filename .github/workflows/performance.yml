@@ -17,6 +17,16 @@ on:
         required: true
         default: smoke
         options: [smoke, normal, peak, stress]
+      pause_seconds:
+        description: Think time of the closed scenarios (H1, H3, H5)
+        type: string
+        required: false
+        default: '3'
+      loan_pause_seconds:
+        description: Think time of H4. 15 s holds about 10 req/s; ParaBank rejects concurrent loan requests above that rate
+        type: string
+        required: false
+        default: '15'
 
 permissions:
   contents: read
@@ -61,6 +71,8 @@ jobs:
           USERS: '2'
           RATE_PER_SECOND: '5'
           DATA_DIR: data
+          PAUSE_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.pause_seconds || '3' }}
+          LOAN_PAUSE_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.loan_pause_seconds || '15' }}
           SCENARIO: ${{ github.event_name == 'workflow_dispatch' && inputs.scenario || 'all' }}
         shell: bash
         run: |
