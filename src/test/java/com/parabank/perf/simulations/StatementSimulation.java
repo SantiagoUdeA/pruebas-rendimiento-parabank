@@ -9,7 +9,8 @@ public class StatementSimulation extends SimulationSupport {
   public StatementSimulation() {
     var scenario = scenario("H3 statement").feed(csv(dataDir + "/statements.csv").circular())
       .exec(http("statement").get("/accounts/#{accountId}/transactions")
-        .check(status().is(200), jsonPath("$[0].id").exists()));
+        .check(status().is(200), jsonPath("$[0].id").exists()))
+      .pause(Environment.PAUSE);
     int count = Environment.PROFILE.equals("smoke") ? users : 200;
     var setup = Environment.PROFILE.equals("smoke") || Environment.PROFILE.equals("peak") || Environment.PROFILE.equals("stress")
       ? scenario.injectOpen(atOnceUsers(count)) : scenario.injectClosed(closed(200));

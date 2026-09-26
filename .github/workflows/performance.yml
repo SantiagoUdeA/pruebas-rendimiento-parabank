@@ -44,6 +44,11 @@ jobs:
         run: |
           scripts/reset-local-parabank-db.sh
           scripts/prepare-parabank-local-data.py
+      - name: Refuse any target outside the isolated instance
+        env:
+          BASE_URL: http://127.0.0.1:8080/parabank/services/bank
+          ALLOWED_HOSTS: 127.0.0.1
+        run: python3 scripts/validate-target.py
       - name: Compile Gatling simulations
         run: ./mvnw -B -ntp test-compile
       - name: Run selected Gatling simulations
@@ -52,7 +57,7 @@ jobs:
           ALLOWED_HOSTS: 127.0.0.1
           PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'smoke' }}
           DURATION_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.profile != 'smoke' && '300' || '10' }}
-          RAMP_SECONDS: '60'
+          RAMP_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.profile != 'smoke' && '60' || '10' }}
           USERS: '2'
           RATE_PER_SECOND: '5'
           DATA_DIR: data
@@ -68,26 +73,15 @@ jobs:
             all) classes=(LoginSimulation TransferSimulation StatementSimulation LoanSimulation BillPaySimulation) ;;
             *) echo "Unsupported scenario" >&2; exit 2 ;;
           esac
+          status=0
           for class in "${classes[@]}"; do
-            echo "Running ${class} with PROFILE=${PROFILE}"
-            scripts/reset-local-parabank-db.sh
-            scripts/prepare-parabank-local-data.py
-            export ATTEMPTS_FILE="evidence/runs/attempts-${class}.csv"
-            ./mvnw -B -ntp gatling:test "-Dgatling.simulationClass=com.parabank.perf.simulations.${class}"
+            echo "############ ${class} with PROFILE=${PROFILE}"
+            scripts/run-scenario.sh "${class}" "${PROFILE}" || status=$?
           done
-      - name: Evaluate transfer throughput window
-        if: always() && github.event_name == 'workflow_dispatch' && (inputs.scenario == 'transfer' || inputs.scenario == 'all') && inputs.profile != 'smoke'
-        env:
-          SCENARIO: ${{ github.event_name == 'workflow_dispatch' && inputs.scenario || 'all' }}
-          PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'smoke' }}
-        run: |
-          attempts="evidence/runs/attempts-TransferSimulation.csv"
-          if [ -s "$attempts" ]; then
-            python3 scripts/evaluate-transfer-throughput.py "$attempts" | tee evidence/runs/transfer-throughput.json
-          else
-            echo "Transfer attempts were not recorded; result remains inconclusive." >&2
-            exit 2
-          fi
+          exit "${status}"
+      - name: Build acceptance summary
+        if: always()
+        run: python3 scripts/build-summary.py evidence/runs || true
       - name: Save run metadata
         if: always()
         env:

@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--warmup-seconds", type=int, default=60)
     parser.add_argument("--window-seconds", type=int, default=300)
     parser.add_argument("--minimum-per-second", type=float, default=150)
+    parser.add_argument("--output", help="write the JSON summary to this path as well")
     args = parser.parse_args()
     with Path(args.attempts).open(newline="", encoding="utf-8-sig") as stream:
         rows = list(csv.DictReader(stream))
@@ -39,9 +40,9 @@ def main():
         if start <= timestamp < end and row["status"].strip().upper() == "CONFIRMED":
             confirmed += 1
             buckets[(timestamp - start) // 10000] += 1
-    expected = len(buckets)
-    if expected != 30:
-        sys.exit("The stable window must contain 30 consecutive 10-second blocks")
+    expected = args.window_seconds // 10
+    if expected < 1 or args.window_seconds % 10:
+        sys.exit("The stable window must be a positive multiple of 10 seconds")
     per_second = [count / 10 for count in buckets]
     summary = {"windowStartMillis": start, "windowEndMillis": end, "attemptedInWindow": sum(
         1 for timestamp in times if start <= timestamp < end), "confirmedInWindow": confirmed,
@@ -49,7 +50,11 @@ def main():
         "minimumBlockConfirmedPerSecond": min(per_second), "blockRatesPerSecond": per_second,
         "minimumRequiredPerSecond": args.minimum_per_second,
         "verdict": "PASS" if min(per_second) >= args.minimum_per_second else "FAIL"}
-    print(json.dumps(summary, indent=2))
+    result = json.dumps(summary, indent=2)
+    print(result)
+    if args.output:
+        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.output).write_text(result + "\n", encoding="utf-8")
     return 0 if summary["verdict"] == "PASS" else 1
 
 

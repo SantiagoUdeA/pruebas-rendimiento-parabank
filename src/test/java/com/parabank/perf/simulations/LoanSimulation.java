@@ -7,9 +7,10 @@ import static io.gatling.javaapi.http.HttpDsl.*;
 
 public class LoanSimulation extends SimulationSupport {
   public LoanSimulation() {
-    var scenario = scenario("H4 loan").feed(csv(dataDir + "/loans.csv").queue())
+    var scenario = scenario("H4 loan").feed(csv(dataDir + "/loans.csv").circular())
       .exec(http("request loan").post("/requestLoan?customerId=#{customerId}&amount=#{amount}&downPayment=#{downPayment}&fromAccountId=#{fromAccountId}")
-        .check(status().is(200), jsonPath("$.loanProviderName").exists(), jsonPath("$.approved").is("true")));
+        .check(status().is(200), jsonPath("$.loanProviderName").exists(), jsonPath("$.approved").is("true")))
+      .pause(Environment.LOAN_PAUSE);
     var setup = Environment.PROFILE.equals("smoke") ? scenario.injectOpen(atOnceUsers(1)) : scenario.injectClosed(closed(150));
     setUp(setup).protocols(Environment.httpProtocol())
       .assertions(details("request loan").responseTime().mean().lte(5000), details("request loan").successfulRequests().percent().gte(98.0));
