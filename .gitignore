@@ -10,3 +10,6 @@ src/test/resources/data/*.csv
 !src/test/resources/data/*.example.csv
 __pycache__/
 *.py[cod]
+
+# Guion del video: documento de trabajo del grupo, no se versiona.
+entrega/GUION_VIDEO.txt
